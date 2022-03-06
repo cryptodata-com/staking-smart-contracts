@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "truffle build",
+    "compile": "truffle compile",
     "deploy": "truffle migrate",
     "test": "truffle test ./test/xid_token.test.js ./test/stake_tokens.test.js"
   },
