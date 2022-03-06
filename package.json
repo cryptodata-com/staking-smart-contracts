@@ -1,0 +1,26 @@
+{
+  "name": "xiden-staking-contracts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "truffle build",
+    "deploy": "truffle migrate",
+    "test": "truffle test ./test/xid_token.test.js ./test/stake_tokens.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.5.0",
+    "openzeppelin-solidity": "^4.5.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.6",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^3.0.0",
+    "chai-bn": "^0.3.1",
+    "mocha": "^9.2.0",
+    "web3": "^1.7.0"
+  }
+}
