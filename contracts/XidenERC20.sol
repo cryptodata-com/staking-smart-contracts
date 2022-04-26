@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.0;
 
 /// @title XIDEN ERC20 Token - sXID (symbol)
 /// @author CryptoDATA TEAM (5381)
@@ -29,9 +29,11 @@ contract XidenERC20 is
     ValidatorStaking
 {
     uint128 private constant VALIDATOR_STAKE_AMOUNT_SXID = 2e6 * 10**18;
-    uint128 private constant VALIDATOR_STAKE_AMOUNT_ETHER = 2e6 * 10**18;
+    uint128 private constant VALIDATOR_STAKE_AMOUNT_XDEN = 2e6 * 10**18;
     uint128 private constant SXID_INITIAL_SUPPLY = 2e8;
     address private immutable stakingContract;
+
+    event NewMachineId(address account);
 
     constructor(address deployedStakingContract)
         ERC20("XIDEN Staking", "sXID")
@@ -55,63 +57,64 @@ contract XidenERC20 is
         returns (bool)
     {
         _addNewMachineId(machineId);
+        emit NewMachineId(msg.sender);
         return true;
     }
 
     /// @notice Add a new node as validator
     /// @dev To compute the _signature you need to use getMessageHash and then
     /// @dev use web3.eth.sign(_messageHash, web3.eth.defaultAccount, console.log)
-    /// @param _validatorNodeAddress address of the validator node
-    /// @param _machineId pre-aproved UUID license
-    /// @param _signature bytes signed hash of a computed message hash
+    /// @param validatorNodeAddress address of the validator node
+    /// @param machineId pre-aproved UUID license
+    /// @param signature bytes signed hash of a computed message hash
     /// @return bool true or false
     function stake(
-        address _validatorNodeAddress,
-        string memory _machineId,
-        bytes memory _signature
+        address validatorNodeAddress,
+        string memory machineId,
+        bytes memory signature
     ) external payable returns (bool) {
         require(
-            _validatorNodeAddress != address(0x0),
+            validatorNodeAddress != address(0x0),
             "Invalid validator node address"
         );
         require(
             balanceOf(msg.sender) >= VALIDATOR_STAKE_AMOUNT_SXID,
             "Insuficient funds to stake"
         );
-        require(_signature.length == 65, "Invalid signature length");
+        require(signature.length == 65, "Invalid signature length");
 
         _burn(msg.sender, VALIDATOR_STAKE_AMOUNT_SXID);
         _setNewStake(
-            _validatorNodeAddress,
+            validatorNodeAddress,
             VALIDATOR_STAKE_AMOUNT_SXID,
-            _machineId,
-            _signature
+            machineId,
+            signature
         );
 
         (bool stakeCallComplete, ) = address(stakingContract).call{
-            value: VALIDATOR_STAKE_AMOUNT_ETHER
-        }(abi.encodeWithSignature("stake(address)", _validatorNodeAddress));
+            value: VALIDATOR_STAKE_AMOUNT_XDEN
+        }(abi.encodeWithSignature("stake(address)", validatorNodeAddress));
         require(stakeCallComplete, "Unable to stake on parent contract");
         return stakeCallComplete;
     }
 
     /// @notice Remove validator node
-    /// @param _validatorNodeAddress Account of the validator node
-    /// @param _machineId Whitelist UUID machine ID license
+    /// @param validatorNodeAddress Account of the validator node
+    /// @param machineId Whitelist UUID machine ID license
     /// @return bool true or false
-    function unstake(address _validatorNodeAddress, string calldata _machineId)
+    function unstake(address validatorNodeAddress, string calldata machineId)
         external
         returns (bool)
     {
         require(
-            _validatorNodeAddress != address(0x0),
+            validatorNodeAddress != address(0x0),
             "Invalid validator node address"
         );
-        _removeStake(_validatorNodeAddress, _machineId);
+        _removeStake(validatorNodeAddress, machineId);
         _mint(msg.sender, VALIDATOR_STAKE_AMOUNT_SXID);
 
         (bool unstakeCallComplete, ) = address(stakingContract).call(
-            abi.encodeWithSignature("unstake(address)", _validatorNodeAddress)
+            abi.encodeWithSignature("unstake(address)", validatorNodeAddress)
         );
         require(
             unstakeCallComplete,
@@ -131,10 +134,10 @@ contract XidenERC20 is
     }
 
     /// @notice Can use it to mint new tokens
-    /// @param _account the account where to mint new tokens
-    /// @param _amount amount of tokens in wei
-    function mint(address _account, uint256 _amount) external onlyOwner {
-        _mint(_account, _amount);
+    /// @param account the account where to mint new tokens
+    /// @param amount amount of tokens in wei
+    function mint(address account, uint256 amount) external onlyOwner {
+        _mint(account, amount);
     }
 
     /// @notice not possible with this smart contract
@@ -144,11 +147,11 @@ contract XidenERC20 is
 
     /// @dev make sure no transfers are allowed if contract == paused
     function _beforeTokenTransfer(
-        address _from,
-        address _validatorNodeAddress,
-        uint256 _amount
+        address from,
+        address validatorNodeAddress,
+        uint256 amount
     ) internal override whenNotPaused {
-        super._beforeTokenTransfer(_from, _validatorNodeAddress, _amount);
+        super._beforeTokenTransfer(from, validatorNodeAddress, amount);
     }
 
     receive() external payable {}

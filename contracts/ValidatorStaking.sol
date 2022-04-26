@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.0;
 
 contract ValidatorStaking {
     struct Validator {
@@ -16,14 +16,15 @@ contract ValidatorStaking {
 
     /// @notice Calculates a hash composed by nodeAddress and machine id
     /// @dev Make sure only the signer of this message can call the _removeStake method
-    /// @param _validatorNodeAddress the node validator address
-    /// @param _message license of the machine added in the whitelist
+    /// @param validatorNodeAddress the node validator address
+    /// @param message license of the machine added in the whitelist
     /// @return bytes32 keccak256 hash signature
-    function getMessageHash(
-        address _validatorNodeAddress,
-        string memory _message
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_validatorNodeAddress, _message));
+    function getMessageHash(address validatorNodeAddress, string memory message)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(validatorNodeAddress, message));
     }
 
     /// @notice Add new machine id to the whitelist of allowed validators
@@ -36,47 +37,46 @@ contract ValidatorStaking {
 
     /// @notice Set a node address to the list of staking validators
     function _setNewStake(
-        address _validatorNodeAddress,
-        uint256 _amount,
-        string memory _machineId,
-        bytes memory _signature
+        address validatorNodeAddress,
+        uint256 amount,
+        string memory machineId,
+        bytes memory signature
     ) internal {
-        uint256 index = allowedMachineIds[_machineId];
+        uint256 index = allowedMachineIds[machineId];
         uint256 stakedAmount = stakes[msg.sender];
 
         require(
-            _validatorNodeAddress != address(0),
+            validatorNodeAddress != address(0),
             "Can not stake to Zero Address"
         );
         require(
-            _validatorNodeAddress != msg.sender,
+            validatorNodeAddress != msg.sender,
             "You can not set your self as staker"
         );
         require(index != 0, "This license is not whitelisted!");
         require(stakedAmount == 0, "This node node is already a validator ");
 
-        stakes[msg.sender] += _amount;
+        stakes[msg.sender] += amount;
         validators[msg.sender] = Validator({
-            validatorNodeAddress: _validatorNodeAddress,
-            amount: _amount,
-            machineId: _machineId,
-            signature: _signature
+            validatorNodeAddress: validatorNodeAddress,
+            amount: amount,
+            machineId: machineId,
+            signature: signature
         });
     }
 
     /// @notice Remove a node address from the list of staking validators
-    function _removeStake(
-        address _validatorNodeAddress,
-        string memory _machineId
-    ) internal {
+    function _removeStake(address validatorNodeAddress, string memory machineId)
+        internal
+    {
         uint256 stakedAmount = stakes[msg.sender];
         require(stakedAmount > 0, "You are not in the validators list");
 
         require(
             verify(
                 msg.sender,
-                _validatorNodeAddress,
-                _machineId,
+                validatorNodeAddress,
+                machineId,
                 validators[msg.sender].signature
             ),
             "invalid signature match"
@@ -114,29 +114,63 @@ contract ValidatorStaking {
     }
 
     function verify(
-        address _signer,
-        address _validatorNodeAddress,
-        string memory _message,
+        address signer,
+        address validatorNodeAddress,
+        string memory message,
         bytes memory signature
     ) internal pure returns (bool) {
-        bytes32 messageHash = getMessageHash(_validatorNodeAddress, _message);
+        bytes32 messageHash = getMessageHash(validatorNodeAddress, message);
         bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
 
-        return recoverSigner(ethSignedMessageHash, signature) == _signer;
+        return recoverSigner(ethSignedMessageHash, signature) == signer;
     }
 
-    function recoverSigner(
-        bytes32 _ethSignedMessageHash,
-        bytes memory _signature
-    ) internal pure returns (address) {
-        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+    function recoverSigner(bytes32 ethSignedMessageHash, bytes memory signature)
+        internal
+        pure
+        returns (address)
+    {
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
 
-        return ecrecover(_ethSignedMessageHash, v, r, s);
+        return recover(ethSignedMessageHash, v, r, s);
+    }
+
+    /**
+     * @dev Overload of {ECDSA-recover-bytes32-bytes-} that receives the `v`,
+     * `r` and `s` signature fields separately.
+     */
+    function recover(
+        bytes32 hash,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal pure returns (address) {
+        // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature
+        // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines
+        // the valid range for s in (281): 0 < s < secp256k1n ÷ 2 + 1, and for v in (282): v ∈ {27, 28}. Most
+        // signatures from current libraries generate a unique signature with an s-value in the lower half order.
+        //
+        // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value
+        // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
+        // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
+        // these malleable signatures as well.
+        require(
+            uint256(s) <=
+                0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
+            "ECDSA: invalid signature 's' value"
+        );
+        require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
+
+        // If the signature is valid (and not malleable), return the signer address
+        address signer = ecrecover(hash, v, r, s);
+        require(signer != address(0), "ECDSA: invalid signature");
+
+        return signer;
     }
 
     /// @dev Signature is produced by signing a keccak256 hash with the following format:
     /// @dev "\x19Ethereum Signed Message\n" + len(msg) + msg
-    function getEthSignedMessageHash(bytes32 _messageHash)
+    function getEthSignedMessageHash(bytes32 messageHash)
         internal
         pure
         returns (bytes32)
@@ -145,7 +179,7 @@ contract ValidatorStaking {
             keccak256(
                 abi.encodePacked(
                     "\x19Ethereum Signed Message:\n32",
-                    _messageHash
+                    messageHash
                 )
             );
     }

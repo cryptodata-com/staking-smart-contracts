@@ -1,7 +1,7 @@
 {
   "name": "xiden-staking-contracts",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.1",
+  "description": "Xiden.com",
   "main": "index.js",
   "scripts": {
     "compile": "truffle compile",
@@ -13,6 +13,8 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0",
+    "@truffle/hdwallet-provider": "^2.0.6",
+    "dotenv": "^16.0.0",
     "openzeppelin-solidity": "^4.5.0"
   },
   "devDependencies": {

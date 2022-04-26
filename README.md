@@ -9,7 +9,7 @@ A validator never assumes the “leader”, or “block proposer”, to be corre
 ## Smart Contracts in this reqository
 
 `Staking.sol` - This smart contract is pre-deployed from block 0 when the chain was initialized, and is available on the address `0x0000000000000000000000000000000000001001`.
-`XidenERC20.sol` - XidenERC20 with sXID as symbol, is an ERC20 token interface to interact with the Smart Contract. Node validators will be required to get on the pre-aproved whitelist and stake 2 Milion sXID. The contract will call the `stake(nodeValidator)` funtion on the Staking Smart contract and send 2 Million XID that are locked until the `unstake(nodeValidator)` method is called. 
+`XidenERC20.sol` - XidenERC20 with sXID as symbol, is an ERC20 token interface to interact with the Smart Contract. Node validators will be required to get on the pre-aproved whitelist and stake 2 Milion sXID. The contract will call the `stake(nodeValidator)` funtion on the Staking Smart contract and send 2 Million XDEN that are locked until the `unstake(nodeValidator)` method is called. 
 
 ## PoS Features
 
@@ -35,7 +35,7 @@ $ npm run compile
 
 ## Test
 
-Because the minimum value to stake is 2 million XID and sXID, before runing tests please make sure to change the values of the smart contracts:
+Because the minimum value to stake is 2 million XDEN and sXID, before runing tests please make sure to change the values of the smart contracts:
 
 ```bash
 # contracts/Staking.sol 

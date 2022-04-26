@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.0;
 
-/// @title The Staking Contract for XIDEN (XID) PoS Network
+/// @title The Staking Contract for XIDEN (XDEN) PoS Network
 /// @author Polygon-Edge TEAM and CryptoDATA TEAM (5381)
-/// @notice The Xiden network requires Node validators to stake 2 Million XID
+/// @notice The Xiden network requires Node validators to stake 2 Million XDEN
 //
 //   ██╗  ██╗██╗██████╗ ███████╗███╗   ██╗    ███████╗████████╗ █████╗ ██╗  ██╗██╗███╗   ██╗ ██████╗
 //   ╚██╗██╔╝██║██╔══██╗██╔════╝████╗  ██║    ██╔════╝╚══██╔══╝██╔══██╗██║ ██╔╝██║████╗  ██║██╔════╝
@@ -17,12 +17,12 @@ contract Staking {
     uint32 private constant MINIMUM_REQUIRED_NUM_VALIDATORS = 4;
 
     // Properties
-    address[] public _validators;
-    mapping(address => bool) _addressToIsValidator;
-    mapping(address => uint256) _addressToStakedAmount;
-    mapping(address => uint256) _addressToValidatorIndex;
-    uint256 private _stakedAmount;
-    mapping(address => address) private _delegatedStaker;
+    address[] public validatorsList;
+    mapping(address => bool) addressToIsValidator;
+    mapping(address => uint256) addressToStakedAmount;
+    mapping(address => uint256) addressToValidatorIndex;
+    uint256 private totalStakedAmount;
+    mapping(address => address) private delegatedStaker;
 
     // Events
     event Staked(address indexed account, uint256 amount);
@@ -31,7 +31,7 @@ contract Staking {
     // Please no steal
     modifier onlyStaker(address _validatorNode) {
         require(
-            _delegatedStaker[_validatorNode] == msg.sender,
+            delegatedStaker[_validatorNode] == msg.sender,
             "Only staker can call function"
         );
         _;
@@ -40,19 +40,19 @@ contract Staking {
     constructor() {}
 
     function stakedAmount() external view returns (uint256) {
-        return _stakedAmount;
+        return totalStakedAmount;
     }
 
     function validators() external view returns (address[] memory) {
-        return _validators;
+        return validatorsList;
     }
 
     function isValidator(address addr) external view returns (bool) {
-        return _addressToIsValidator[addr];
+        return addressToIsValidator[addr];
     }
 
     function accountStake(address addr) external view returns (uint256) {
-        return _addressToStakedAmount[addr];
+        return addressToStakedAmount[addr];
     }
 
     // Public functions
@@ -60,80 +60,77 @@ contract Staking {
         _stake(msg.sender);
     }
 
-    function stake(address _validatorNode) external payable returns (bool) {
+    function stake(address validatorNode) external payable returns (bool) {
         require(
             msg.value >= VALIDATOR_THRESHOLD,
             "You need more funds in order to stake!"
         );
-        _stake(_validatorNode);
+        _stake(validatorNode);
         return true;
     }
 
-    function unstake(address _validatorNode)
-        external
-        onlyStaker(_validatorNode)
-    {
-        _unstake(_validatorNode);
+    function unstake(address validatorNode) external onlyStaker(validatorNode) {
+        _unstake(validatorNode);
     }
 
     // Private functions
-    function _stake(address _validatorNode) private {
-        _stakedAmount += msg.value;
-        _addressToStakedAmount[_validatorNode] += msg.value;
+    function _stake(address validatorNode) private {
+        totalStakedAmount += msg.value;
+        addressToStakedAmount[validatorNode] += msg.value;
 
         if (
-            !_addressToIsValidator[_validatorNode] &&
-            _addressToStakedAmount[_validatorNode] >= VALIDATOR_THRESHOLD
+            !addressToIsValidator[validatorNode] &&
+            addressToStakedAmount[validatorNode] >= VALIDATOR_THRESHOLD
         ) {
             // append to validator set
-            _addressToIsValidator[_validatorNode] = true;
-            _addressToValidatorIndex[_validatorNode] = _validators.length;
-            _delegatedStaker[_validatorNode] = msg.sender;
-            _validators.push(_validatorNode);
+            addressToIsValidator[validatorNode] = true;
+            addressToValidatorIndex[validatorNode] = validatorsList.length;
+            delegatedStaker[validatorNode] = msg.sender;
+            validatorsList.push(validatorNode);
         }
 
-        emit Staked(_validatorNode, msg.value);
+        emit Staked(validatorNode, msg.value);
     }
 
-    function _unstake(address _validatorNode) private {
+    function _unstake(address validatorNode) private {
         require(
-            _validators.length > MINIMUM_REQUIRED_NUM_VALIDATORS,
+            validatorsList.length > MINIMUM_REQUIRED_NUM_VALIDATORS,
             "Number of validators can't be less than MINIMUM_REQUIRED_NUM_VALIDATORS"
         );
 
-        uint256 amount = _addressToStakedAmount[_validatorNode];
-        address delegator = _delegatedStaker[_validatorNode];
-        if (_addressToIsValidator[_validatorNode]) {
-            _deleteFromValidators(_validatorNode);
+        uint256 amount = addressToStakedAmount[validatorNode];
+        address delegator = delegatedStaker[validatorNode];
+        if (addressToIsValidator[validatorNode]) {
+            _deleteFromValidators(validatorNode);
         }
 
-        _stakedAmount -= amount;
-        _addressToStakedAmount[_validatorNode] = 0;
-        delete _delegatedStaker[_validatorNode];
+        totalStakedAmount -= amount;
+        addressToStakedAmount[validatorNode] = 0;
+        delete delegatedStaker[validatorNode];
 
-        emit Unstaked(_validatorNode, amount);
+        emit Unstaked(validatorNode, amount);
         payable(delegator).transfer(amount);
     }
 
     function _deleteFromValidators(address staker) private {
         require(
-            _addressToValidatorIndex[staker] < _validators.length,
+            addressToValidatorIndex[staker] < validatorsList.length,
             "index out of range"
         );
 
         // index of removed address
-        uint256 index = _addressToValidatorIndex[staker];
-        uint256 lastIndex = _validators.length - 1;
+        uint256 index = addressToValidatorIndex[staker];
+        uint256 lastIndex = validatorsList.length - 1;
 
         if (index != lastIndex) {
             // exchange between the element and last to pop for delete
-            address lastAddr = _validators[lastIndex];
-            _validators[index] = lastAddr;
-            _addressToValidatorIndex[lastAddr] = index;
+            address lastAddr = validatorsList[lastIndex];
+            validatorsList[index] = lastAddr;
+            addressToValidatorIndex[lastAddr] = index;
         }
 
-        _addressToIsValidator[staker] = false;
-        _addressToValidatorIndex[staker] = 0;
-        _validators.pop();
+        addressToIsValidator[staker] = false;
+        addressToValidatorIndex[staker] = 0;
+        validatorsList.pop();
     }
 }
